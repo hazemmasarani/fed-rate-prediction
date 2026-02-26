@@ -17,6 +17,7 @@ We aim to identify the most significant variables, create meaningful categorical
 - Includes both continuous variables and derived categorical features.
 
 ## Project Structure
+```
 fed-rate-prediction/
 ├── data/ # Raw and processed datasets
 ├── data_acquisition/ # Scripts to download and process data
@@ -26,7 +27,7 @@ fed-rate-prediction/
 ├── models/ # Regression, stepwise, clustering scripts
 ├── results/ # Model outputs, plots, BIC scores, tables
 └── README.md # Project overview and instructions
-
+```
 ## Setup
 1. Clone the repository: git clone https://github.com/yourusername/fed-rate-prediction.git
 2. Run scripts in order: `data_acquisition/` → `preprocessing/` → `eda/` → `features/` → `models/`
