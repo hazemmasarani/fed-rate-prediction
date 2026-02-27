@@ -1,0 +1,10 @@
+"","Prediction","Reference","Freq"
+"1","Cut","Cut",14
+"2","Hike","Cut",12
+"3","Hold","Cut",5
+"4","Cut","Hike",7
+"5","Hike","Hike",21
+"6","Hold","Hike",9
+"7","Cut","Hold",3
+"8","Hike","Hold",4
+"9","Hold","Hold",9

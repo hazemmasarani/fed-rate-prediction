@@ -1,0 +1,13 @@
+Call:
+multinom(formula = RateDirection ~ ., data = train_data)
+
+Coefficients:
+     (Intercept)    CPI_lag1 UNRATE_lag1 YieldSpread_lag1 InflationMomentum    VIX_lag1
+Hike   0.1975862 0.004451087  0.07701669       -0.2558988        0.14924281 -0.07244370
+Hold  -6.4790341 0.026298631  0.14271170        0.4736664       -0.09633216 -0.07017567
+     RecessionSignal
+Hike        2.136560
+Hold        3.159377
+
+Residual Deviance: 613.7038 
+AIC: 641.7038 

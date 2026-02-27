@@ -1,0 +1,181 @@
+---
+title: "Model 1: Multinomial Logistic Regression"
+output: html_document
+---
+# --------------------------------
+# 1️⃣ Load Libraries
+# --------------------------------
+```{r}
+install.packages("caret")
+```
+
+# --------------------------------
+# 1️⃣ Load Libraries
+# --------------------------------
+```{r}
+library(dplyr)
+library(readr)
+library(nnet)
+library(caret)
+```
+
+# --------------------------------
+# 2️⃣ Load Feature Dataset
+# --------------------------------
+```{r}
+data_dir <- "../data/"
+
+fed_data <- read_csv(
+  file.path(data_dir, "fred_features.csv"),
+  show_col_types = FALSE
+)
+
+glimpse(fed_data)
+```
+
+# -----------------------------------------
+# 3️⃣ Select Variables
+# -----------------------------------------
+```{r}
+model_data <- fed_data %>%
+  select(
+    RateDirection,
+    CPI_lag1,
+    UNRATE_lag1,
+    YieldSpread_lag1,
+    InflationMomentum,
+    VIX_lag1,
+    RecessionSignal
+  ) %>%
+  na.omit()
+```
+*Make sure response is factor:*
+```{r}
+model_data$RateDirection <- as.factor(model_data$RateDirection)
+```
+
+# ---------------------------------------
+# 4️⃣ Train / Test Split
+# ---------------------------------------
+```{r}
+train_index <- createDataPartition(
+  model_data$RateDirection,
+  p = 0.8,
+  list = FALSE
+)
+
+train_data <- model_data[train_index, ]
+test_data  <- model_data[-train_index, ]
+```
+
+# ---------------------------------------
+# 5️⃣ Fit Multinomial Model
+# ---------------------------------------
+```{r}
+model_multinom <- multinom(
+  RateDirection ~ .,
+  data = train_data
+)
+
+summary(model_multinom)
+```
+
+# ----------------------------------
+# 6️⃣ Model Fit Statistics
+# ----------------------------------
+```{r}
+AIC(model_multinom)
+BIC(model_multinom)
+```
+
+# -----------------------------
+# 7️⃣ Predictions
+# -----------------------------
+```{r}
+predictions <- predict(model_multinom, test_data)
+```
+
+# ------------------------------
+# 8️⃣ Model Evaluation
+# ------------------------------
+```{r}
+confusionMatrix(predictions, test_data$RateDirection)
+```
+
+# ----------------------------
+# Save results
+# ----------------------------
+
+# ----------------------------
+# 1️⃣ Create Results Folder
+# ----------------------------
+```{r}
+results_dir <- "../results/01_multinomial_logit"
+dir.create(results_dir, showWarnings = FALSE, recursive = TRUE)
+dir.create(file.path(results_dir, "plots"), showWarnings = FALSE)
+```
+
+# ----------------------------
+# 2️⃣ Save Confusion Matrix
+# ----------------------------
+```{r}
+cm <- confusionMatrix(predictions, test_data$RateDirection)
+
+# Save table
+write.csv(as.data.frame(cm$table),
+          file.path(results_dir, "confusion_matrix.csv"),
+          row.names = TRUE)
+```
+
+# ----------------------------
+# 3️⃣ Save Model Coefficients
+# ----------------------------
+```{r}
+coeffs <- summary(model_multinom)$coefficients
+write.csv(coeffs,
+          file.path(results_dir, "model_coefficients.csv"),
+          row.names = TRUE)
+```
+
+# ----------------------------
+# 4️⃣ Save Model Summary as Text
+# ----------------------------
+```{r}
+sink(file.path(results_dir, "model_summary.txt"))
+print(model_multinom)
+sink()
+```
+
+# -----------------------------
+# 5️⃣ Save Plots
+# -----------------------------
+```{r}
+library(ggplot2)
+
+# Create plot object
+p <- ggplot(fed_data, aes(x = RateDirection)) +
+  geom_bar(fill = "steelblue") +
+  theme_minimal() +
+  ggtitle("RateDirection Distribution")
+
+# Save plot
+ggsave(filename = file.path(results_dir, "plots", "class_distributions.png"),
+       plot = p,   
+       width = 6,
+       height = 4)
+```
+
+## Model Interpretation
+
+- Overall accuracy: 52% — moderate predictive power for a 3-class problem.
+- Hike and Cut predictions are more reliable than Hold predictions.
+- Most influential variables:
+    - YieldSpread_lag1: negative spreads increase probability of hikes.
+    - InflationMomentum: higher inflation momentum → more likely hike.
+    - RecessionSignal: significant effect on predicting Hike/Hold.
+- Hold class is underrepresented, consider combining classes or oversampling.
+- Model is converged; next steps could include:
+    - Stepwise selection based on BIC/AIC
+    - Regularized multinomial logistic regression
+    - Additional lagged or derived features
+
