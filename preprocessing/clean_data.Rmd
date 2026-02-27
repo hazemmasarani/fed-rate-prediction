@@ -1,0 +1,110 @@
+# -------------------------------
+# Load libraries
+# -------------------------------
+```{r}
+library(dplyr)
+library(readr)
+library(lubridate)
+```
+
+# -------------------------------
+# 1️⃣ Load Data
+# -------------------------------
+
+```{r}
+data_dir <- "../data/"
+fred_data <- read_csv(file.path(data_dir, "fred_data.csv"))
+```
+
+# -------------------------------
+# 2️⃣ Ensure Proper Date Format
+# -------------------------------
+```{r}
+fred_data <- fred_data %>%
+  mutate(date = as.Date(date))
+```
+
+# -------------------------------
+# 3️⃣ Convert Everything to Monthly
+# -------------------------------
+```{r}
+fred_monthly <- fred_data %>%
+  mutate(year_month = floor_date(date, "month")) %>%
+  group_by(year_month) %>%
+  summarise(across(-date, mean, na.rm = TRUE)) %>%
+  rename(date = year_month) %>%
+  ungroup()
+```
+
+
+# -------------------------------
+# 4️⃣ Handle Missing Values
+# -------------------------------
+```{r}
+fred_clean <- fred_monthly %>%
+  filter(date >= as.Date("1990-01-01"))
+```
+
+
+# -------------------------------
+# 5️⃣ Create Fed Rate Change
+# -------------------------------
+```{r}
+fred_clean <- fred_clean %>%
+  arrange(date) %>%
+  mutate(
+    FedRateChange = FEDFUNDS - lag(FEDFUNDS)
+  )
+```
+
+
+# --------------------------------------------------
+# 6️⃣ Create Categorical Variable: Hike / Cut / Hold
+# --------------------------------------------------
+```{r}
+fred_clean <- fred_clean %>%
+  mutate(
+    RateDirection = case_when(
+      FedRateChange > 0 ~ "Hike",
+      FedRateChange < 0 ~ "Cut",
+      TRUE ~ "Hold"
+    )
+  )
+```
+
+# --------------------------------------------------
+# 7️⃣ Inflation Regime (Another Categorical Feature)
+# --------------------------------------------------
+```{r}
+fred_clean <- fred_clean %>%
+  mutate(
+    InflationRegime = case_when(
+      CPIAUCSL < quantile(CPIAUCSL, 0.33, na.rm = TRUE) ~ "Low",
+      CPIAUCSL < quantile(CPIAUCSL, 0.66, na.rm = TRUE) ~ "Medium",
+      TRUE ~ "High"
+    )
+  )
+```
+
+# --------------------------------------------------
+# 8️⃣ Yield Spread (Very Important Macro Feature)
+# --------------------------------------------------
+```{r}
+fred_clean <- fred_clean %>%
+  mutate(
+    YieldSpread = DGS10 - DGS2
+  )
+```
+
+# --------------------------------------------------
+# 8️⃣ Yield Spread (Very Important Macro Feature)
+# --------------------------------------------------
+```{r}
+write_csv(fred_clean, file.path(data_dir, "fred_clean.csv"))
+cat("Preprocessed data saved to data/fred_clean.csv\n")
+```
+
+
+
+
+
