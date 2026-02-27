@@ -1,0 +1,117 @@
+---
+title: "Exploratory Data Analysis - Fed Rate Prediction"
+output: html_document
+---
+```{r}
+install.packages("corrplot")
+install.packages("GGally")
+```
+# --------------------------------
+# 1️⃣ Load Libraries
+# --------------------------------
+```{r}
+library(dplyr)
+library(readr)
+library(ggplot2)
+library(lubridate)
+library(corrplot)
+library(GGally)
+```
+
+# --------------------------------
+# 2️⃣ Load Clean Dataset
+# --------------------------------
+```{r}
+data_dir <- "../data/"
+fred_data <- read_csv(file.path(data_dir, "fred_clean.csv"))
+
+glimpse(fred_data)
+```
+
+# --------------------------------
+# 📊 3️⃣ Summary Statistics
+# --------------------------------
+```{r}
+summary(fred_data)
+fred_data %>%
+  select(where(is.numeric)) %>%
+  summarise(across(everything(), list(
+    mean = mean,
+    sd = sd,
+    min = min,
+    max = max
+  ), na.rm = TRUE))
+```
+
+# --------------------------------
+# 📈 4️⃣ Time Series Visualization
+# --------------------------------
+*Federal Funds Rate Over Time*
+```{r}
+ggplot(fred_data, aes(x = date, y = FEDFUNDS)) +
+  geom_line(color = "blue") +
+  labs(title = "Federal Funds Rate Over Time",
+       x = "Date",
+       y = "FEDFUNDS") +
+  theme_minimal()
+```
+*Inflation (CPI) Over Time*
+```{r}
+ggplot(fred_data, aes(x = date, y = CPIAUCSL)) +
+  geom_line(color = "red") +
+  labs(title = "CPI Over Time",
+       x = "Date",
+       y = "CPI") +
+  theme_minimal()
+```
+# --------------------------------
+# 📉 5️⃣ Yield Spread Analysis
+# --------------------------------
+```{r}
+ggplot(fred_data, aes(x = date, y = YieldSpread)) +
+  geom_line(color = "darkgreen") +
+  labs(title = "10Y - 2Y Yield Spread",
+       x = "Date",
+       y = "Yield Spread") +
+  theme_minimal()
+```
+# -----------------------------------------------
+# 🔎 6️⃣ Correlation Matrix (Numerical Variables)
+# -----------------------------------------------
+```{r}
+numeric_data <- fred_data %>%
+  select(where(is.numeric)) %>%
+  select(-FedRateChange)
+
+cor_matrix <- cor(numeric_data, use = "complete.obs")
+
+corrplot(cor_matrix, method = "color", type = "upper", tl.cex = 0.6)
+```
+# --------------------------------------------------------
+# 📊 7️⃣ Fed Rate Direction Distribution (Categorical)
+# --------------------------------------------------------
+```{r}
+ggplot(fred_data, aes(x = RateDirection)) +
+  geom_bar(fill = "steelblue") +
+  labs(title = "Distribution of Rate Direction",
+       x = "Rate Direction",
+       y = "Count") +
+  theme_minimal()
+```
+
+# --------------------------------
+# 📌 9️⃣ Pairwise Plot (Important)
+# --------------------------------
+```{r}
+selected_vars <- fred_data %>%
+  select(FEDFUNDS, CPIAUCSL, UNRATE, YieldSpread, VIXCLS)
+
+GGally::ggpairs(selected_vars)
+```
+
+## Key Observations
+
+- FEDFUNDS shows clear cyclical behavior.
+- YieldSpread becomes negative before recession periods.
+- CPI shows upward long-term trend.
+- Certain variables show high correlation, indicating possible multicollinearity.
