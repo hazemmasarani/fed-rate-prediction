@@ -1,0 +1,82 @@
+# -------------------------------
+# Load libraries
+# -------------------------------
+```{r}
+install.packages("httr")
+install.packages("jsonlite")
+install.packages("dplyr")
+install.packages("readr")
+install.packages("lubridate")
+
+library(httr)
+library(jsonlite)
+library(dplyr)
+library(readr)
+library(lubridate)
+```
+
+# -------------------------------
+# Configuration
+# -------------------------------
+```{r}
+api_key <- "f34a7450f2808a53f8cf5987057896a1"   # replace with your actual FRED API key
+data_dir <- "../data/"
+dir.create(data_dir, showWarnings = FALSE)
+```
+
+# List of FRED series IDs to download
+```{r}
+series_ids <- c(
+  "FEDFUNDS", "CPIAUCSL", "PCEPI", "T5YIE", "T10YIE",
+  "UNRATE", "PAYEMS", "ICNSA", "CIVPART", "CES0500000003",
+  "INDPRO", "RSAFS", "HOUST", "TCU", "DGS10", "DGS2",
+  "VIXCLS", "BAA10YM", "NFCI"
+)
+```
+
+# -------------------------------
+# Function to download a series
+# -------------------------------
+```{r}
+get_fred_series <- function(series_id) {
+  url <- "https://api.stlouisfed.org/fred/series/observations"
+  res <- GET(url, query = list(
+    series_id = series_id,
+    api_key = api_key,
+    file_type = "json"
+  ))
+  
+  if(res$status_code != 200) {
+    warning(paste("Failed to download", series_id))
+    return(NULL)
+  }
+  
+  obs <- fromJSON(content(res, as = "text", encoding = "UTF-8"))$observations
+  df <- tibble(
+    date = as.Date(obs$date),
+    !!series_id := as.numeric(obs$value)
+  )
+  return(df)
+}
+```
+
+# -------------------------------
+# Download all series and merge
+# -------------------------------
+```{r}
+data_list <- lapply(series_ids, get_fred_series)
+
+# Merge all by date
+fred_data <- Reduce(function(x, y) full_join(x, y, by = "date"), data_list)
+
+# Sort by date
+fred_data <- fred_data %>% arrange(date)
+```
+
+# -------------------------------
+# Save to CSV
+# -------------------------------
+```{r}
+write_csv(fred_data, file.path(data_dir, "fred_data.csv"))
+cat("FRED data downloaded and saved to data/fred_data.csv\n")
+```
