@@ -1,0 +1,122 @@
+---
+title: "Feature Engineering"
+output: html_document
+---
+
+# -------------------------------
+# 0️⃣ Install packages
+# -------------------------------
+```{r}
+install.packages("zoo")
+```
+
+# -------------------------------
+# 1️⃣ Load Libraries
+# -------------------------------
+```{r}
+library(dplyr)
+library(readr)
+library(lubridate)
+```
+
+# -------------------------------
+# 2️⃣ Load Clean Data
+# -------------------------------
+```{r}
+data_dir <- "../data/"
+fred_data <- read_csv(file.path(data_dir, "fred_clean.csv"),
+                      show_col_types = FALSE)
+
+glimpse(fred_data)
+```
+# ------------------------------------------
+# 3️⃣ Convert Character → Factor
+# ------------------------------------------
+```{r}
+fred_data <- fred_data %>%
+  mutate(
+    RateDirection = as.factor(RateDirection),
+    InflationRegime = as.factor(InflationRegime)
+  )
+```
+
+# ------------------------------------------
+# 4️⃣ Create Recession Indicator
+# ------------------------------------------
+```{r}
+fred_data <- fred_data %>%
+  mutate(
+    RecessionSignal = ifelse(YieldSpread < 0, 1, 0),
+    RecessionSignal = as.factor(RecessionSignal)
+  )
+```
+
+# ----------------------------------------
+# 5️⃣ Create Lagged Variables
+# ----------------------------------------
+```{r}
+fred_data <- fred_data %>%
+  arrange(date) %>%
+  mutate(
+    CPI_lag1 = lag(CPIAUCSL, 1),
+    UNRATE_lag1 = lag(UNRATE, 1),
+    YieldSpread_lag1 = lag(YieldSpread, 1),
+    VIX_lag1 = lag(VIXCLS, 1)
+  )
+```
+
+# ----------------------------------------------
+# 6️⃣ Create Rolling Inflation (3-Month Average)
+# ----------------------------------------------
+```{r}
+fred_data <- fred_data %>%
+  mutate(
+    CPI_3mo_avg = zoo::rollmean(CPIAUCSL, k = 3, fill = NA, align = "right")
+  )
+```
+
+# -----------------------------------------------
+# 7️⃣ Inflation Acceleration (Momentum Feature)
+# -----------------------------------------------
+```{r}
+fred_data <- fred_data %>%
+  mutate(
+    InflationMomentum = CPIAUCSL - lag(CPIAUCSL, 3)
+  )
+```
+
+# ------------------------------------------------
+# 8️⃣ Strong Rate Hike / Strong Cut Category
+# ------------------------------------------------
+```{r}
+fred_data <- fred_data %>%
+  mutate(
+    StrongMove = case_when(
+      FedRateChange >= 0.50 ~ "StrongHike",
+      FedRateChange > 0 ~ "MildHike",
+      FedRateChange <= -0.50 ~ "StrongCut",
+      FedRateChange < 0 ~ "MildCut",
+      TRUE ~ "Hold"
+    ),
+    StrongMove = as.factor(StrongMove)
+  )
+```
+
+# ------------------------------------------------
+# 9️⃣ Remove NA Created by Lags
+# ------------------------------------------------
+```{r}
+fred_features <- fred_data %>%
+  filter(!is.na(CPI_lag1))
+```
+# -----------------------------------------------
+# 🔟 Save Final Feature Dataset
+# -----------------------------------------------
+```{r}
+write_csv(fred_features,
+          file.path(data_dir, "fred_features.csv"))
+
+cat("Feature dataset saved to data/fred_features.csv\n")
+```
+
+
